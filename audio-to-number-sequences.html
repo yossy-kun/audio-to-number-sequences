@@ -1,0 +1,1040 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>音 → 数字列</title>
+  <style>
+    :root {
+      --bg: #0a0c0d;
+      --panel: #121516;
+      --panel-2: #171b1c;
+      --ink: #f4f1e8;
+      --muted: #9aa2a0;
+      --line: #2a3030;
+      --accent: #b9f45d;
+      --accent-2: #78d8c7;
+      --danger: #ff8f7a;
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 75% 0%, rgba(120, 216, 199, .08), transparent 35rem),
+        var(--bg);
+      font-family: Inter, "Noto Sans JP", "Yu Gothic UI", system-ui, sans-serif;
+    }
+
+    button, input { font: inherit; }
+
+    .shell {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 34px 0 64px;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--accent);
+      font: 700 12px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(34px, 6vw, 64px);
+      line-height: .95;
+      letter-spacing: -.055em;
+      font-weight: 780;
+    }
+
+    .intro {
+      max-width: 390px;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(290px, .55fr);
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(18, 21, 22, .92);
+      overflow: hidden;
+    }
+
+    .drop-zone {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 320px;
+      margin: 14px;
+      border: 1px dashed #46504e;
+      border-radius: 13px;
+      background:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 28px 28px;
+      text-align: center;
+      transition: border-color .18s, background-color .18s, transform .18s;
+    }
+
+    .drop-zone.dragging {
+      border-color: var(--accent);
+      background-color: rgba(185, 244, 93, .055);
+      transform: scale(.995);
+    }
+
+    .drop-icon {
+      width: 62px;
+      height: 62px;
+      margin: 0 auto 22px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #0a0c0d;
+      background: var(--accent);
+      font-size: 30px;
+      font-weight: 400;
+    }
+
+    .drop-zone h2 { margin: 0 0 8px; font-size: 22px; letter-spacing: -.025em; }
+    .drop-zone p { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .choose {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      margin-top: 22px;
+      padding: 0 20px;
+      border: 1px solid #66706e;
+      border-radius: 999px;
+      color: var(--ink);
+      background: #1b2020;
+      cursor: pointer;
+      font-weight: 700;
+      transition: background .18s, border-color .18s;
+    }
+
+    .choose:hover { background: #242a29; border-color: var(--accent); }
+    #fileInput { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+    .file-strip {
+      display: none;
+      align-items: center;
+      gap: 14px;
+      margin: 0 14px 14px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: var(--panel-2);
+    }
+
+    .file-strip.visible { display: flex; }
+    .file-badge { color: var(--accent-2); font: 700 17px ui-monospace, monospace; }
+    .file-data { min-width: 0; flex: 1; }
+    .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+    .file-meta { margin-top: 4px; color: var(--muted); font-size: 12px; }
+
+    .settings { padding: 22px; }
+    .settings h2 { margin: 0 0 24px; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; }
+
+    .setting { padding: 18px 0; border-top: 1px solid var(--line); }
+    .setting:first-of-type { border-top: 0; padding-top: 0; }
+    .setting label { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-size: 14px; }
+    .value { color: var(--accent); font: 700 14px ui-monospace, monospace; }
+
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    select {
+      width: 100%;
+      min-height: 42px;
+      padding: 0 12px;
+      border: 1px solid #46504e;
+      border-radius: 9px;
+      outline: none;
+      color: var(--ink);
+      background: #0d1010;
+      cursor: pointer;
+    }
+    select:focus { border-color: var(--accent-2); }
+
+    .hint { margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+
+    .check-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 11px;
+      cursor: pointer;
+      line-height: 1.45;
+    }
+    .check-row input {
+      width: 18px;
+      height: 18px;
+      margin: 1px 0 0;
+      flex: 0 0 auto;
+      accent-color: var(--accent);
+    }
+    .setting.is-disabled { opacity: .42; }
+
+    .analyze {
+      width: 100%;
+      min-height: 52px;
+      margin-top: 14px;
+      border: 0;
+      border-radius: 12px;
+      color: #0a0c0d;
+      background: var(--accent);
+      cursor: pointer;
+      font-weight: 800;
+      transition: filter .18s, transform .18s;
+    }
+
+    .analyze:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+    .analyze:disabled { cursor: not-allowed; opacity: .35; }
+
+    .progress-wrap { display: none; margin-top: 16px; }
+    .progress-wrap.visible { display: block; }
+    .progress-head { display: flex; justify-content: space-between; margin-bottom: 8px; color: var(--muted); font-size: 12px; }
+    .progress { height: 5px; overflow: hidden; border-radius: 999px; background: #252b2b; }
+    .progress > div { width: 0; height: 100%; background: var(--accent-2); transition: width .1s linear; }
+
+    .status {
+      min-height: 22px;
+      margin: 15px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .status.error { color: var(--danger); }
+
+    .results { display: none; margin-top: 18px; }
+    .results.visible { display: block; }
+    .results-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: 0 2px 13px; }
+    .results h2 { margin: 0; font-size: 23px; letter-spacing: -.03em; }
+    .summary { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+
+    .result-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+    .preview-status { min-height: 18px; margin: 0 2px 12px; color: var(--accent-2); font-size: 12px; }
+
+    .copy-all, .copy-one, .preview-button {
+      border: 1px solid #46504e;
+      border-radius: 9px;
+      color: var(--ink);
+      background: #1b2020;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .copy-all, .preview-button { padding: 10px 14px; }
+    .copy-one { padding: 7px 10px; font-size: 12px; }
+    .preview-button.primary { color: #0a0c0d; border-color: var(--accent); background: var(--accent); }
+    .copy-all:hover, .copy-one:hover, .preview-button:hover:not(:disabled) { border-color: var(--accent); }
+    .preview-button:disabled { cursor: not-allowed; opacity: .4; }
+
+    .track { margin-bottom: 12px; padding: 18px; }
+    .track-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 15px; }
+    .track-title h3 { margin: 0; font-size: 14px; }
+    .sequence-block + .sequence-block { margin-top: 13px; }
+    .sequence-label { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; color: var(--muted); font-size: 12px; }
+    textarea {
+      display: block;
+      width: 100%;
+      height: 86px;
+      resize: vertical;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      outline: none;
+      color: #d8e7df;
+      background: #0d1010;
+      font: 12px/1.65 ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+    textarea:focus { border-color: var(--accent-2); }
+
+    .technical {
+      margin-top: 20px;
+      padding: 18px 20px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    .technical strong { color: var(--ink); }
+
+    @media (max-width: 780px) {
+      header { display: block; }
+      .intro { margin-top: 18px; }
+      .workspace { grid-template-columns: 1fr; }
+      .drop-zone { min-height: 270px; }
+      .results-head { align-items: flex-start; }
+      .result-actions { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <p class="eyebrow">Fourier sequence tool</p>
+        <h1>音 → 数字列</h1>
+      </div>
+      <p class="intro">音声を1/60秒ごとに分解し、強いサイン波の「高さ」と「音量」をカンマ区切りの数字列へ変換します。処理はすべてこのブラウザ内で完結します。</p>
+    </header>
+
+    <section class="workspace" aria-label="音声変換">
+      <div class="card">
+        <div class="drop-zone" id="dropZone">
+          <div>
+            <div class="drop-icon" aria-hidden="true">＋</div>
+            <h2>音声ファイルをドロップ</h2>
+            <p>WAV・MP3・M4A・OGGなど、ブラウザが再生できる形式</p>
+            <label class="choose" for="fileInput">ファイルを選ぶ</label>
+            <input id="fileInput" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac">
+          </div>
+        </div>
+        <div class="file-strip" id="fileStrip">
+          <div class="file-badge">WAV</div>
+          <div class="file-data">
+            <div class="file-name" id="fileName"></div>
+            <div class="file-meta" id="fileMeta">読み込み待ち</div>
+          </div>
+          <audio id="audioPreview" controls></audio>
+        </div>
+      </div>
+
+      <aside class="card settings">
+        <h2>解析設定</h2>
+        <div class="setting">
+          <label for="waveCount"><span>サイン波の数</span><span class="value" id="waveCountValue">3</span></label>
+          <input id="waveCount" type="range" min="1" max="64" value="3">
+          <p class="hint">各タイミングで音量が大きい順に抽出します。</p>
+        </div>
+        <div class="setting">
+          <label for="fftSize"><span>周波数の精度</span><span class="value" id="fftSizeValue">4096</span></label>
+          <input id="fftSize" type="range" min="11" max="14" value="12">
+          <p class="hint">大きいほど高さを細かく判別できますが、処理時間が増えます。</p>
+        </div>
+        <div class="setting">
+          <label for="pitchWindow"><span>高さの測定範囲</span></label>
+          <select id="pitchWindow">
+            <option value="long" selected>長い解析窓（周波数を優先）</option>
+            <option value="frame">1/60秒区間（時間を優先）</option>
+          </select>
+          <p class="hint">短い区間では急な変化に追従しますが、近い周波数の分離が難しくなります。</p>
+        </div>
+        <div class="setting">
+          <label for="volumeWindow"><span>音量の測定範囲</span></label>
+          <select id="volumeWindow">
+            <option value="long">長い解析窓（変化を平均）</option>
+            <option value="frame" selected>1/60秒区間（変化に追従）</option>
+          </select>
+          <p class="hint">現在のおすすめは高さ＝長い窓、音量＝1/60秒です。</p>
+        </div>
+        <div class="setting">
+          <label for="decimalPlaces"><span>小数点以下の桁数</span><span class="value" id="decimalPlacesValue">2</span></label>
+          <input id="decimalPlaces" type="range" min="0" max="6" value="2">
+          <p class="hint">0なら整数、1〜6なら高さと音量を小数で出力します。</p>
+        </div>
+        <div class="setting" id="multiplierSetting">
+          <label for="volumeMultiplier"><span>音量の倍率</span><span class="value" id="volumeMultiplierValue">1.0×</span></label>
+          <input id="volumeMultiplier" type="range" min="0.1" max="10" step="0.1" value="1">
+          <p class="hint">通常時の音量値を増減します。20を超える値は20になります。</p>
+        </div>
+        <div class="setting">
+          <label class="check-row" for="normalizeVolume">
+            <input id="normalizeVolume" type="checkbox">
+            <span>最大の単独サイン波を20にノーマライズ</span>
+          </label>
+          <p class="hint">全タイミング・全サイン波の中で最も大きい1成分だけを基準に20へ合わせ、他は同じ比率で変換します。合計音量は基準にしません。</p>
+        </div>
+        <button class="analyze" id="analyzeBtn" disabled>数字列に変換</button>
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-head"><span id="progressText">解析中…</span><span id="progressPercent">0%</span></div>
+          <div class="progress"><div id="progressBar"></div></div>
+        </div>
+        <p class="status" id="status" aria-live="polite">音声ファイルを選択してください。</p>
+      </aside>
+    </section>
+
+    <section class="results" id="results" aria-live="polite">
+      <div class="results-head">
+        <div>
+          <h2>変換結果</h2>
+          <p class="summary" id="resultSummary"></p>
+        </div>
+        <div class="result-actions">
+          <button class="preview-button primary" id="playPreviewBtn">▶ 変換音を再生</button>
+          <button class="preview-button" id="stopPreviewBtn" disabled>■ 停止</button>
+          <button class="copy-all" id="copyAllBtn">すべてコピー</button>
+        </div>
+      </div>
+      <p class="preview-status" id="previewStatus" aria-live="polite"></p>
+      <div id="tracks"></div>
+    </section>
+
+    <div class="card technical">
+      <strong>数値の基準：</strong> 高さ0 = C4（261.63Hz）、+1 = 半音上、−1 = 半音下。通常は音量0 = 無音、20 = 振幅1（倍率1.0）。高さと音量は、それぞれ長い解析窓または各1/60秒区間から測定できます。ノーマライズ時は全サイン波の合計ではなく、全出力中で最大の単独サイン波を20にします。変換音プレビューは補間せず、各数値を1/60秒ずつそのまま保持します。なお数字列には各サイン波の位相情報が含まれないため、元音声と完全に同一にはなりません。
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const C4 = 261.625565;
+      const FPS = 60;
+      const SILENCE_AMPLITUDE = 0.002;
+      const MIN_FREQUENCY = 20;
+      const MAX_FREQUENCY = 12000;
+
+      const $ = (id) => document.getElementById(id);
+      const fileInput = $('fileInput');
+      const dropZone = $('dropZone');
+      const fileStrip = $('fileStrip');
+      const analyzeBtn = $('analyzeBtn');
+      const status = $('status');
+      const results = $('results');
+      const tracks = $('tracks');
+      const progressWrap = $('progressWrap');
+      const progressBar = $('progressBar');
+      const progressPercent = $('progressPercent');
+      const progressText = $('progressText');
+      const waveCount = $('waveCount');
+      const fftSize = $('fftSize');
+      const pitchWindow = $('pitchWindow');
+      const volumeWindow = $('volumeWindow');
+      const decimalPlaces = $('decimalPlaces');
+      const volumeMultiplier = $('volumeMultiplier');
+      const normalizeVolume = $('normalizeVolume');
+      const audioPreview = $('audioPreview');
+      const playPreviewBtn = $('playPreviewBtn');
+      const stopPreviewBtn = $('stopPreviewBtn');
+      const previewStatus = $('previewStatus');
+
+      let selectedFile = null;
+      let previewUrl = null;
+      let lastResult = null;
+      let synthesisContext = null;
+      let synthesisSource = null;
+      let synthesizedPreview = null;
+
+      waveCount.addEventListener('input', () => {
+        $('waveCountValue').textContent = waveCount.value;
+      });
+
+      fftSize.addEventListener('input', () => {
+        $('fftSizeValue').textContent = String(2 ** Number(fftSize.value));
+      });
+
+      decimalPlaces.addEventListener('input', () => {
+        $('decimalPlacesValue').textContent = decimalPlaces.value;
+      });
+
+      volumeMultiplier.addEventListener('input', () => {
+        $('volumeMultiplierValue').textContent = `${Number(volumeMultiplier.value).toFixed(1)}×`;
+      });
+
+      normalizeVolume.addEventListener('change', () => {
+        volumeMultiplier.disabled = normalizeVolume.checked;
+        $('multiplierSetting').classList.toggle('is-disabled', normalizeVolume.checked);
+      });
+
+      fileInput.addEventListener('change', () => {
+        if (fileInput.files[0]) selectFile(fileInput.files[0]);
+      });
+
+      ['dragenter', 'dragover'].forEach((type) => {
+        dropZone.addEventListener(type, (event) => {
+          event.preventDefault();
+          dropZone.classList.add('dragging');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach((type) => {
+        dropZone.addEventListener(type, (event) => {
+          event.preventDefault();
+          dropZone.classList.remove('dragging');
+        });
+      });
+
+      dropZone.addEventListener('drop', (event) => {
+        const file = [...event.dataTransfer.files].find((item) => item.type.startsWith('audio/') || /\.(wav|mp3|m4a|aac|ogg|flac)$/i.test(item.name));
+        if (file) selectFile(file);
+        else setStatus('音声ファイルを認識できませんでした。', true);
+      });
+
+      analyzeBtn.addEventListener('click', analyze);
+      playPreviewBtn.addEventListener('click', playSynthesizedPreview);
+      stopPreviewBtn.addEventListener('click', stopSynthesizedPreview);
+      $('copyAllBtn').addEventListener('click', async () => {
+        if (!lastResult) return;
+        const text = lastResult.tracks.map((track, i) =>
+          `サイン波 ${i + 1}\n高さ\n${track.pitch.join(',')}\n音量\n${track.volume.join(',')}`
+        ).join('\n\n');
+        await copyText(text, $('copyAllBtn'));
+      });
+
+      function selectFile(file) {
+        resetSynthesizedPreview();
+        selectedFile = file;
+        lastResult = null;
+        results.classList.remove('visible');
+        $('fileName').textContent = file.name;
+        $('fileMeta').textContent = `${formatBytes(file.size)}・音声情報は変換時に取得`;
+        fileStrip.classList.add('visible');
+        analyzeBtn.disabled = false;
+        setStatus('準備ができました。設定を確認して変換してください。');
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        previewUrl = URL.createObjectURL(file);
+        audioPreview.src = previewUrl;
+      }
+
+      async function analyze() {
+        if (!selectedFile) return;
+        resetSynthesizedPreview();
+        analyzeBtn.disabled = true;
+        progressWrap.classList.add('visible');
+        setProgress(0, '音声を読み込み中…');
+        setStatus('');
+        results.classList.remove('visible');
+
+        let context;
+        try {
+          const bytes = await selectedFile.arrayBuffer();
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextClass) throw new Error('このブラウザはWeb Audio APIに対応していません。');
+          context = new AudioContextClass();
+          const buffer = await context.decodeAudioData(bytes.slice(0));
+          const samples = mixToMono(buffer);
+          const size = 2 ** Number(fftSize.value);
+          const count = Number(waveCount.value);
+          const pitchWindowMode = pitchWindow.value;
+          const volumeWindowMode = volumeWindow.value;
+          const decimals = Number(decimalPlaces.value);
+          const multiplier = Number(volumeMultiplier.value);
+          const normalize = normalizeVolume.checked;
+          const frameCount = Math.max(1, Math.ceil(buffer.duration * FPS));
+
+          $('fileMeta').textContent = `${formatBytes(selectedFile.size)}・${formatTime(buffer.duration)}・${buffer.sampleRate.toLocaleString()} Hz・${buffer.numberOfChannels}ch`;
+          setProgress(2, 'FFTで解析中…');
+          await nextPaint();
+
+          const rawData = await analyzeFrames(samples, buffer.sampleRate, frameCount, size, count, {
+            pitchWindow: pitchWindowMode,
+            volumeWindow: volumeWindowMode,
+          }, (done) => {
+            setProgress(2 + Math.round(done * 96), `FFTで解析中… ${Math.round(done * frameCount)}/${frameCount}`);
+          });
+          const data = formatTracks(rawData, decimals, multiplier, normalize);
+
+          lastResult = { tracks: data, frameCount, duration: buffer.duration, sampleRate: buffer.sampleRate, fftSize: size, pitchWindowMode, volumeWindowMode, decimals, multiplier, normalize };
+          renderResults(lastResult);
+          setProgress(100, '完了');
+          setStatus(`${frameCount.toLocaleString()}タイミングの解析が完了しました。`);
+          results.classList.add('visible');
+          results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (error) {
+          console.error(error);
+          setStatus(error.message || '音声を変換できませんでした。別の形式をお試しください。', true);
+          progressWrap.classList.remove('visible');
+        } finally {
+          if (context) await context.close();
+          analyzeBtn.disabled = false;
+        }
+      }
+
+      function mixToMono(buffer) {
+        const mono = new Float32Array(buffer.length);
+        for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+          const source = buffer.getChannelData(channel);
+          for (let i = 0; i < source.length; i++) mono[i] += source[i] / buffer.numberOfChannels;
+        }
+        return mono;
+      }
+
+      async function analyzeFrames(samples, sampleRate, frameCount, size, count, optionsOrProgress, progressCallback) {
+        const options = typeof optionsOrProgress === 'function'
+          ? { pitchWindow: 'long', volumeWindow: 'frame' }
+          : optionsOrProgress;
+        const onProgress = typeof optionsOrProgress === 'function' ? optionsOrProgress : progressCallback;
+        const output = Array.from({ length: count }, () => ({ pitch: [], volume: [] }));
+        const windowValues = new Float64Array(size);
+        let windowSum = 0;
+        for (let i = 0; i < size; i++) {
+          windowValues[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (size - 1));
+          windowSum += windowValues[i];
+        }
+
+        const maximumFrameLength = Math.max(1, Math.ceil(sampleRate / FPS));
+        const transformSize = Math.max(size, 2 ** Math.ceil(Math.log2(maximumFrameLength)));
+        const real = new Float64Array(transformSize);
+        const imag = new Float64Array(transformSize);
+        const magnitudes = new Float64Array(transformSize / 2);
+        const minBin = Math.max(1, Math.floor(MIN_FREQUENCY * transformSize / sampleRate));
+        const maxBin = Math.min(transformSize / 2 - 2, Math.ceil(MAX_FREQUENCY * transformSize / sampleRate));
+        const yieldEvery = Math.max(1, Math.floor(frameCount / 100));
+
+        for (let frame = 0; frame < frameCount; frame++) {
+          const center = Math.round(frame * sampleRate / FPS);
+          const frameBegin = Math.min(samples.length, center);
+          const frameEnd = Math.min(samples.length, Math.round((frame + 1) * sampleRate / FPS));
+          let longStart;
+          if (samples.length >= size) {
+            longStart = Math.max(0, Math.min(samples.length - size, center - Math.floor(size / 2)));
+          } else {
+            longStart = -Math.floor((size - samples.length) / 2);
+          }
+          const longBegin = Math.max(0, longStart);
+          const longEnd = Math.min(samples.length, longStart + size);
+          const pitchUsesFrame = options.pitchWindow === 'frame';
+          const pitchStart = pitchUsesFrame ? frameBegin : longStart;
+          const pitchLength = pitchUsesFrame ? frameEnd - frameBegin : size;
+          const volumeBegin = options.volumeWindow === 'frame' ? frameBegin : longBegin;
+          const volumeEnd = options.volumeWindow === 'frame' ? frameEnd : longEnd;
+          let pitchPeak = 0;
+          let volumePeak = 0;
+          let activeSamples = 0;
+          let effectiveWindowSum = 0;
+
+          real.fill(0);
+          imag.fill(0);
+          for (let i = 0; i < pitchLength; i++) {
+            const sampleIndex = pitchStart + i;
+            const sample = sampleIndex >= 0 && sampleIndex < samples.length ? samples[sampleIndex] : 0;
+            const weight = pitchUsesFrame
+              ? (pitchLength > 1 ? 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (pitchLength - 1)) : 1)
+              : windowValues[i];
+            real[i] = sample * weight;
+            if (sampleIndex >= 0 && sampleIndex < samples.length) {
+              activeSamples++;
+              effectiveWindowSum += weight;
+              pitchPeak = Math.max(pitchPeak, Math.abs(sample));
+            }
+          }
+          for (let i = volumeBegin; i < volumeEnd; i++) volumePeak = Math.max(volumePeak, Math.abs(samples[i]));
+
+          if (pitchPeak < SILENCE_AMPLITUDE || volumePeak < SILENCE_AMPLITUDE || activeSamples === 0) {
+            for (const track of output) {
+              track.pitch.push(0);
+              track.volume.push(0);
+            }
+          } else {
+            fft(real, imag);
+            for (let bin = minBin - 1; bin <= maxBin + 1; bin++) {
+              magnitudes[bin] = Math.hypot(real[bin], imag[bin]);
+            }
+
+            const peaks = [];
+            for (let bin = minBin; bin <= maxBin; bin++) {
+              const mag = magnitudes[bin];
+              if (mag >= magnitudes[bin - 1] && mag > magnitudes[bin + 1]) {
+                const left = Math.log(Math.max(magnitudes[bin - 1], 1e-20));
+                const middle = Math.log(Math.max(mag, 1e-20));
+                const right = Math.log(Math.max(magnitudes[bin + 1], 1e-20));
+                const denominator = left - 2 * middle + right;
+                const offset = denominator === 0 ? 0 : 0.5 * (left - right) / denominator;
+                const frequency = (bin + Math.max(-0.5, Math.min(0.5, offset))) * sampleRate / transformSize;
+                const interpolatedLogMagnitude = middle - 0.25 * (left - right) * offset;
+                const spectralAmplitude = 2 * Math.exp(interpolatedLogMagnitude) / Math.max(1, effectiveWindowSum || windowSum);
+                peaks.push({ frequency, spectralAmplitude, amplitude: 0 });
+              }
+            }
+
+            peaks.sort((a, b) => b.spectralAmplitude - a.spectralAmplitude);
+            const candidates = peaks.slice(0, Math.min(peaks.length, Math.max(16, count * 2)));
+            for (const peak of candidates) {
+              peak.amplitude = measureLocalAmplitude(samples, volumeBegin, volumeEnd, peak.frequency, sampleRate);
+            }
+            candidates.sort((a, b) => b.amplitude - a.amplitude);
+            for (let slot = 0; slot < count; slot++) {
+              const peak = candidates[slot];
+              if (!peak || peak.amplitude < SILENCE_AMPLITUDE) {
+                output[slot].pitch.push(0);
+                output[slot].volume.push(0);
+              } else {
+                output[slot].pitch.push(12 * Math.log2(peak.frequency / C4));
+                output[slot].volume.push(peak.amplitude);
+              }
+            }
+          }
+
+          if (frame % yieldEvery === 0 || frame === frameCount - 1) {
+            onProgress((frame + 1) / frameCount);
+            await nextPaint();
+          }
+        }
+        return output;
+      }
+
+      function measureLocalAmplitude(samples, begin, end, frequency, sampleRate) {
+        const length = end - begin;
+        if (length < 4) return 0;
+        let weightSum = 0;
+        let cosSum = 0;
+        let sinSum = 0;
+        let sampleSum = 0;
+        let cosCos = 0;
+        let sinSin = 0;
+        let cosSin = 0;
+        let sampleCos = 0;
+        let sampleSin = 0;
+        const omega = 2 * Math.PI * frequency / sampleRate;
+
+        for (let i = 0; i < length; i++) {
+          const weight = length > 1 ? 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (length - 1)) : 1;
+          const angle = omega * (begin + i);
+          const cosine = Math.cos(angle);
+          const sine = Math.sin(angle);
+          const sample = samples[begin + i];
+          weightSum += weight;
+          cosSum += weight * cosine;
+          sinSum += weight * sine;
+          sampleSum += weight * sample;
+          cosCos += weight * cosine * cosine;
+          sinSin += weight * sine * sine;
+          cosSin += weight * cosine * sine;
+          sampleCos += weight * sample * cosine;
+          sampleSin += weight * sample * sine;
+        }
+
+        const a11 = cosCos - cosSum * cosSum / weightSum;
+        const a12 = cosSin - cosSum * sinSum / weightSum;
+        const a22 = sinSin - sinSum * sinSum / weightSum;
+        const b1 = sampleCos - cosSum * sampleSum / weightSum;
+        const b2 = sampleSin - sinSum * sampleSum / weightSum;
+        const determinant = a11 * a22 - a12 * a12;
+        if (Math.abs(determinant) < 1e-12) return 0;
+        const cosineCoefficient = (b1 * a22 - a12 * b2) / determinant;
+        const sineCoefficient = (a11 * b2 - a12 * b1) / determinant;
+        return Math.hypot(cosineCoefficient, sineCoefficient);
+      }
+
+      function formatTracks(rawTracks, decimals, multiplier, normalize) {
+        let largestSingleAmplitude = 0;
+        for (const track of rawTracks) {
+          for (const amplitude of track.volume) {
+            largestSingleAmplitude = Math.max(largestSingleAmplitude, amplitude);
+          }
+        }
+        const volumeFactor = normalize && largestSingleAmplitude > 0
+          ? 20 / largestSingleAmplitude
+          : 20 * multiplier;
+
+        return rawTracks.map((track) => ({
+          pitch: track.pitch.map((value, index) =>
+            track.volume[index] === 0 ? 0 : roundForOutput(value, decimals)
+          ),
+          volume: track.volume.map((value) =>
+            roundForOutput(Math.max(0, Math.min(20, value * volumeFactor)), decimals)
+          ),
+        }));
+      }
+
+      function roundForOutput(value, decimals) {
+        const factor = 10 ** decimals;
+        return Math.round((value + Number.EPSILON) * factor) / factor;
+      }
+
+      async function playSynthesizedPreview() {
+        if (!lastResult || synthesisSource) return;
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) {
+          previewStatus.textContent = 'このブラウザでは変換音を再生できません。';
+          return;
+        }
+
+        try {
+          playPreviewBtn.disabled = true;
+          if (!synthesisContext || synthesisContext.state === 'closed') {
+            synthesisContext = new AudioContextClass();
+            synthesizedPreview = null;
+          }
+          if (synthesisContext.state === 'suspended') await synthesisContext.resume();
+          if (!synthesizedPreview) {
+            previewStatus.textContent = '変換した数字列から音を生成中…';
+            synthesizedPreview = await createSynthesisBuffer(synthesisContext, lastResult, (progress) => {
+              previewStatus.textContent = `変換した数字列から音を生成中… ${Math.round(progress * 100)}%`;
+            });
+          }
+
+          const source = synthesisContext.createBufferSource();
+          source.buffer = synthesizedPreview.buffer;
+          source.connect(synthesisContext.destination);
+          source.onended = () => {
+            if (synthesisSource !== source) return;
+            synthesisSource = null;
+            playPreviewBtn.disabled = false;
+            stopPreviewBtn.disabled = true;
+            previewStatus.textContent = '変換音の再生が終了しました。';
+          };
+          synthesisSource = source;
+          stopPreviewBtn.disabled = false;
+          const protection = synthesizedPreview.gain < 1
+            ? `（音割れ防止 ${gainToDecibels(synthesizedPreview.gain).toFixed(1)} dB）`
+            : '';
+          previewStatus.textContent = `変換音を再生中 ${protection}`;
+          source.start();
+        } catch (error) {
+          console.error(error);
+          synthesisSource = null;
+          playPreviewBtn.disabled = false;
+          stopPreviewBtn.disabled = true;
+          previewStatus.textContent = '変換音を生成できませんでした。';
+        }
+      }
+
+      function stopSynthesizedPreview() {
+        if (synthesisSource) {
+          const source = synthesisSource;
+          synthesisSource = null;
+          source.stop();
+          source.disconnect();
+        }
+        playPreviewBtn.disabled = false;
+        stopPreviewBtn.disabled = true;
+        previewStatus.textContent = lastResult ? '変換音を停止しました。' : '';
+      }
+
+      function resetSynthesizedPreview() {
+        stopSynthesizedPreview();
+        synthesizedPreview = null;
+        if (synthesisContext && synthesisContext.state !== 'closed') synthesisContext.close();
+        synthesisContext = null;
+        previewStatus.textContent = '';
+      }
+
+      async function createSynthesisBuffer(context, result, onProgress) {
+        const sampleRate = Math.min(48000, Math.max(16000, result.sampleRate || 44100));
+        const sampleCount = Math.max(1, Math.ceil(result.frameCount / FPS * sampleRate));
+        const buffer = context.createBuffer(1, sampleCount, sampleRate);
+        const output = buffer.getChannelData(0);
+        const phases = new Float64Array(result.tracks.length);
+        const voicePitches = new Float64Array(result.tracks.length);
+        const voiceVolumes = new Float64Array(result.tracks.length);
+        let loadedFrame = -1;
+        let peak = 0;
+        const chunkSize = 32768;
+
+        for (let chunkStart = 0; chunkStart < sampleCount; chunkStart += chunkSize) {
+          const chunkEnd = Math.min(sampleCount, chunkStart + chunkSize);
+          for (let sampleIndex = chunkStart; sampleIndex < chunkEnd; sampleIndex++) {
+            const frame = Math.min(result.frameCount - 1, Math.floor(sampleIndex * FPS / sampleRate));
+            if (frame !== loadedFrame) {
+              assignFrameToVoices(result.tracks, frame, voicePitches, voiceVolumes, phases);
+              loadedFrame = frame;
+            }
+            let mixed = 0;
+
+            for (let trackIndex = 0; trackIndex < result.tracks.length; trackIndex++) {
+              const amplitude = voiceVolumes[trackIndex] / 20;
+              if (amplitude <= 0) continue;
+              const frequency = Math.min(sampleRate * 0.49, C4 * 2 ** (voicePitches[trackIndex] / 12));
+              mixed += Math.sin(phases[trackIndex]) * amplitude;
+              phases[trackIndex] += 2 * Math.PI * frequency / sampleRate;
+              if (phases[trackIndex] >= 2 * Math.PI) phases[trackIndex] %= 2 * Math.PI;
+            }
+
+            output[sampleIndex] = mixed;
+            peak = Math.max(peak, Math.abs(mixed));
+          }
+          onProgress(chunkEnd / sampleCount);
+          await nextPaint();
+        }
+
+        const gain = peak > 0.98 ? 0.98 / peak : 1;
+        if (gain < 1) {
+          for (let i = 0; i < output.length; i++) output[i] *= gain;
+        }
+        return { buffer, gain };
+      }
+
+      function assignFrameToVoices(tracks, frame, pitches, volumes, phases) {
+        const components = tracks
+          .map((track) => ({ pitch: Number(track.pitch[frame]) || 0, volume: Number(track.volume[frame]) || 0 }))
+          .filter((component) => component.volume > 0);
+        const previousPitches = Float64Array.from(pitches);
+        const previousVolumes = Float64Array.from(volumes);
+        const nextPitches = new Float64Array(pitches.length);
+        const nextVolumes = new Float64Array(volumes.length);
+        const usedVoices = new Uint8Array(pitches.length);
+        const usedComponents = new Uint8Array(components.length);
+        const matches = [];
+
+        for (let voice = 0; voice < pitches.length; voice++) {
+          if (previousVolumes[voice] <= 0) continue;
+          for (let component = 0; component < components.length; component++) {
+            matches.push({ voice, component, distance: Math.abs(previousPitches[voice] - components[component].pitch) });
+          }
+        }
+        matches.sort((a, b) => a.distance - b.distance);
+
+        for (const match of matches) {
+          if (match.distance > 6 || usedVoices[match.voice] || usedComponents[match.component]) continue;
+          const component = components[match.component];
+          nextPitches[match.voice] = component.pitch;
+          nextVolumes[match.voice] = component.volume;
+          usedVoices[match.voice] = 1;
+          usedComponents[match.component] = 1;
+        }
+
+        for (let componentIndex = 0; componentIndex < components.length; componentIndex++) {
+          if (usedComponents[componentIndex]) continue;
+          const voice = usedVoices.findIndex((used) => !used);
+          if (voice < 0) break;
+          nextPitches[voice] = components[componentIndex].pitch;
+          nextVolumes[voice] = components[componentIndex].volume;
+          phases[voice] = 0;
+          usedVoices[voice] = 1;
+        }
+
+        for (let voice = 0; voice < pitches.length; voice++) {
+          pitches[voice] = nextPitches[voice];
+          volumes[voice] = nextVolumes[voice];
+          if (nextVolumes[voice] <= 0) phases[voice] = 0;
+        }
+      }
+
+      function gainToDecibels(gain) {
+        return 20 * Math.log10(gain);
+      }
+
+      function fft(real, imag) {
+        const n = real.length;
+        for (let i = 1, j = 0; i < n; i++) {
+          let bit = n >> 1;
+          for (; j & bit; bit >>= 1) j ^= bit;
+          j ^= bit;
+          if (i < j) {
+            [real[i], real[j]] = [real[j], real[i]];
+            [imag[i], imag[j]] = [imag[j], imag[i]];
+          }
+        }
+
+        for (let length = 2; length <= n; length <<= 1) {
+          const angle = -2 * Math.PI / length;
+          const wLengthReal = Math.cos(angle);
+          const wLengthImag = Math.sin(angle);
+          for (let start = 0; start < n; start += length) {
+            let wReal = 1;
+            let wImag = 0;
+            for (let offset = 0; offset < length / 2; offset++) {
+              const even = start + offset;
+              const odd = even + length / 2;
+              const oddReal = real[odd] * wReal - imag[odd] * wImag;
+              const oddImag = real[odd] * wImag + imag[odd] * wReal;
+              real[odd] = real[even] - oddReal;
+              imag[odd] = imag[even] - oddImag;
+              real[even] += oddReal;
+              imag[even] += oddImag;
+              const nextWReal = wReal * wLengthReal - wImag * wLengthImag;
+              wImag = wReal * wLengthImag + wImag * wLengthReal;
+              wReal = nextWReal;
+            }
+          }
+        }
+      }
+
+      function renderResults(result) {
+        const volumeMode = result.normalize ? '最大の単独サイン波を20にノーマライズ' : `音量 ${result.multiplier.toFixed(1)}×`;
+        const windowLabel = (mode) => mode === 'frame' ? '1/60秒' : '長い窓';
+        $('resultSummary').textContent = `${result.duration.toFixed(2)}秒 × 60 = ${result.frameCount}個 / ${result.tracks.length}サイン波 / 高さ ${windowLabel(result.pitchWindowMode)} / 音量 ${windowLabel(result.volumeWindowMode)} / 小数${result.decimals}桁 / ${volumeMode}`;
+        tracks.replaceChildren();
+
+        result.tracks.forEach((track, index) => {
+          const article = document.createElement('article');
+          article.className = 'card track';
+          article.innerHTML = `
+            <div class="track-title"><h3>サイン波 ${index + 1} <span class="value">${index === 0 ? '最も強い' : `${index + 1}番目`}</span></h3></div>
+            <div class="sequence-block">
+              <div class="sequence-label"><span>高さ（半音）</span><button class="copy-one" type="button">高さをコピー</button></div>
+              <textarea readonly aria-label="サイン波${index + 1}の高さ"></textarea>
+            </div>
+            <div class="sequence-block">
+              <div class="sequence-label"><span>音量（0–20）</span><button class="copy-one" type="button">音量をコピー</button></div>
+              <textarea readonly aria-label="サイン波${index + 1}の音量"></textarea>
+            </div>`;
+          const areas = article.querySelectorAll('textarea');
+          const buttons = article.querySelectorAll('.copy-one');
+          areas[0].value = track.pitch.join(',');
+          areas[1].value = track.volume.join(',');
+          buttons[0].addEventListener('click', () => copyText(areas[0].value, buttons[0]));
+          buttons[1].addEventListener('click', () => copyText(areas[1].value, buttons[1]));
+          tracks.append(article);
+        });
+      }
+
+      async function copyText(text, button) {
+        const original = button.textContent;
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch {
+          const temporary = document.createElement('textarea');
+          temporary.value = text;
+          temporary.style.position = 'fixed';
+          temporary.style.opacity = '0';
+          document.body.append(temporary);
+          temporary.select();
+          document.execCommand('copy');
+          temporary.remove();
+        }
+        button.textContent = 'コピーしました';
+        setTimeout(() => { button.textContent = original; }, 1400);
+      }
+
+      function setProgress(value, label) {
+        progressBar.style.width = `${value}%`;
+        progressPercent.textContent = `${value}%`;
+        progressText.textContent = label;
+      }
+
+      function setStatus(message, isError = false) {
+        status.textContent = message;
+        status.classList.toggle('error', isError);
+      }
+
+      function nextPaint() {
+        return new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+      }
+
+      function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const rest = Math.floor(seconds % 60).toString().padStart(2, '0');
+        return `${minutes}:${rest}`;
+      }
+
+      function formatBytes(bytes) {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+      }
+    })();
+  </script>
+</body>
+</html>
